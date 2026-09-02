@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  campuspulse-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: campuspulse_cloud_app
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:////app/data/campus_pulse.db
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - campuspulse_data:/app/data
+      - campuspulse_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  campuspulse_data:
+    driver: local
+  campuspulse_uploads:
+    driver: local

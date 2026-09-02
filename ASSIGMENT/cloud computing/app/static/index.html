@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusPulse Cloud - Smart Campus Service Request & Incident Response Platform</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Leaflet GIS Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Top Navigation & Header Bar -->
+    <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Branding -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                    <i data-lucide="radio" class="w-6 h-6 animate-pulse"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent" data-i18n="appName">CampusPulse Cloud</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Cloud Ready</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block" data-i18n="tagline">Smart Campus Service Request & Incident Response Platform</p>
+                </div>
+            </div>
+
+            <!-- Right Controls: Role Switcher, Language, Theme, CTA -->
+            <div class="flex items-center gap-2.5">
+                
+                <!-- Live Cloud WebSocket Status Badge -->
+                <div id="cloud-status-badge" class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                    <span id="cloud-status-dot" class="pulse-beacon"></span>
+                    <span id="cloud-status-text">Cloud Live</span>
+                </div>
+
+                <!-- Role Selector Switcher -->
+                <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                    <i data-lucide="user-check" class="w-4 h-4 text-blue-600 ml-1.5"></i>
+                    <select id="role-select" onchange="setRole(this.value)" class="bg-transparent font-semibold text-slate-700 dark:text-slate-200 outline-none pr-1 cursor-pointer">
+                        <option value="alex.student" selected>🎓 Alex Rivera (Student)</option>
+                        <option value="dr.chen">🔬 Dr. Elena Chen (Faculty)</option>
+                        <option value="tech.dave">🔧 Dave Miller (Lead Tech)</option>
+                        <option value="sec.rodriguez">🛡️ Officer Rodriguez (Security)</option>
+                        <option value="admin.clara">🏢 Clara Oswald (Admin)</option>
+                    </select>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                    <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-500 ml-1.5"></i>
+                    <select id="lang-select" onchange="setLanguage(this.value)" class="bg-transparent font-medium text-slate-700 dark:text-slate-200 outline-none pr-1 cursor-pointer">
+                        <option value="en">EN</option>
+                        <option value="es">ES (Español)</option>
+                        <option value="hi">HI (हिन्दी)</option>
+                        <option value="te">TE (తెలుగు)</option>
+                        <option value="fr">FR (Français)</option>
+                    </select>
+                </div>
+
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Toggle Dark / Light Mode">
+                    <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+                </button>
+
+                <!-- High Contrast Toggle (Accessibility) -->
+                <button onclick="toggleHighContrast()" class="hidden lg:block p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-xs font-bold" title="Toggle High Contrast (WCAG 2.1)">
+                    A11y
+                </button>
+
+                <!-- Report Incident CTA Button -->
+                <button onclick="openNewRequestModal()" class="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 transition transform active:scale-95">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span data-i18n="reportIncident">Report Incident</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- KPI Summary Cards Strip -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+            <!-- Total Requests -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400" data-i18n="kpiTotal">Total Incidents</div>
+                    <div id="kpi-total-val" class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">--</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center">
+                    <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <!-- Active / In Progress -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400" data-i18n="kpiActive">Active / Open</div>
+                    <div id="kpi-active-val" class="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">--</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <!-- Critical Emergencies -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400" data-i18n="kpiEmergency">Critical Emergencies</div>
+                    <div id="kpi-emerg-val" class="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-1">--</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 flex items-center justify-center">
+                    <i data-lucide="alert-octagon" class="w-5 h-5 animate-bounce"></i>
+                </div>
+            </div>
+
+            <!-- Mean Time to Resolution (MTTR) -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400" data-i18n="kpiMttr">Mean Time (MTTR)</div>
+                    <div id="kpi-mttr-val" class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">--</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <!-- SLA Compliance Rate -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm col-span-2 md:col-span-1 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400" data-i18n="kpiSla">SLA Compliance</div>
+                    <div id="kpi-sla-val" class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">--</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+            <button id="tab-btn-incidents" onclick="switchTab('incidents')" class="tab-btn pb-3 px-4 text-sm font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-4 h-4"></i>
+                <span data-i18n="tabIncidents">Incident Management</span>
+            </button>
+            <button id="tab-btn-map" onclick="switchTab('map')" class="tab-btn pb-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2">
+                <i data-lucide="map" class="w-4 h-4"></i>
+                <span data-i18n="tabMap">Interactive GIS Campus Map</span>
+            </button>
+            <button id="tab-btn-analytics" onclick="switchTab('analytics')" class="tab-btn pb-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                <span data-i18n="tabAnalytics">Predictive Analytics</span>
+            </button>
+            <button id="tab-btn-modules" onclick="switchTab('modules')" class="tab-btn pb-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2">
+                <i data-lucide="layers" class="w-4 h-4"></i>
+                <span data-i18n="tabModules">Innovation & Architecture</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: INCIDENT MANAGEMENT -->
+        <div id="tab-content-incidents" class="tab-content space-y-4">
+            
+            <!-- Filters & Search Bar -->
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
+                
+                <!-- Search Box -->
+                <div class="relative w-full lg:w-96">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                    <input type="text" id="search-input" placeholder="Search by ticket code, title, location, reporter..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-blue-400" data-i18n-placeholder="searchPlaceholder">
+                </div>
+
+                <!-- Dropdown Filters -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+                    <!-- Category -->
+                    <select id="filter-category" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 outline-none">
+                        <option value="" data-i18n="allCategories">All Categories</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="HVAC & Climate">HVAC & Climate</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="IT & Network">IT & Network</option>
+                        <option value="Safety & Security">Safety & Security</option>
+                        <option value="Sanitation & Cleaning">Sanitation & Cleaning</option>
+                        <option value="Lab Equipment">Lab Equipment</option>
+                        <option value="Infrastructure & Civil">Infrastructure & Civil</option>
+                    </select>
+
+                    <!-- Building -->
+                    <select id="filter-building" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 outline-none">
+                        <option value="" data-i18n="allBuildings">All Buildings</option>
+                    </select>
+
+                    <!-- Status -->
+                    <select id="filter-status" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 outline-none">
+                        <option value="" data-i18n="allStatuses">All Statuses</option>
+                        <option value="SUBMITTED">SUBMITTED</option>
+                        <option value="TRIAGED">TRIAGED</option>
+                        <option value="ASSIGNED">ASSIGNED</option>
+                        <option value="IN_PROGRESS">IN PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="CLOSED">CLOSED</option>
+                    </select>
+
+                    <!-- Priority -->
+                    <select id="filter-priority" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 outline-none">
+                        <option value="" data-i18n="allPriorities">All Priorities</option>
+                        <option value="LOW">LOW</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="CRITICAL">CRITICAL</option>
+                        <option value="EMERGENCY">EMERGENCY</option>
+                    </select>
+                </div>
+
+                <!-- Emergency Toggle -->
+                <div class="flex items-center gap-2 self-start lg:self-center">
+                    <label class="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer select-none">
+                        <input type="checkbox" id="filter-emergency" class="w-4 h-4 text-red-600 rounded">
+                        <span data-i18n="emergencyOnly">Emergencies Only</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider" id="table-results-count">Loading Requests...</div>
+                    <button onclick="refreshIncidentList()" class="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Feed
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <th class="py-3 px-4" data-i18n="tableCode">Ticket Code</th>
+                                <th class="py-3 px-4" data-i18n="tableTitle">Incident / Title</th>
+                                <th class="py-3 px-4" data-i18n="tableCategory">Category</th>
+                                <th class="py-3 px-4" data-i18n="tableLocation">Location</th>
+                                <th class="py-3 px-4" data-i18n="tablePriority">Priority</th>
+                                <th class="py-3 px-4" data-i18n="tableStatus">Status</th>
+                                <th class="py-3 px-4" data-i18n="tableReported">Reported</th>
+                                <th class="py-3 px-4 text-right" data-i18n="tableActions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidents-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                            <!-- Populated dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: GIS CAMPUS MAP -->
+        <div id="tab-content-map" class="tab-content hidden space-y-4">
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="navigation" class="w-5 h-5 text-blue-600"></i>
+                    <div>
+                        <h3 class="font-bold text-sm">Live Campus Geographic Information System (GIS)</h3>
+                        <p class="text-xs text-slate-500">Visual real-time location pins for all smart campus facilities and incidents.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-semibold">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500"></span> Critical / Emergency</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> High Priority</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Medium / Low</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Resolved</span>
+                </div>
+            </div>
+
+            <!-- Map View Container -->
+            <div class="relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+                <div id="campus-map"></div>
+            </div>
+        </div>
+
+        <!-- TAB 3: PREDICTIVE ANALYTICS -->
+        <div id="tab-content-analytics" class="tab-content hidden space-y-6">
+            
+            <!-- SLA Breach Predictor Alert Banner -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm">Predictive Workload & SLA Integrity Engine</h4>
+                        <p class="text-xs text-blue-100">All emergency response times are currently within 1.5h SLA target. 0 high-risk SLA breach projections.</p>
+                    </div>
+                </div>
+                <button onclick="loadAnalyticsCharts()" class="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-bold transition">
+                    Refresh Metrics
+                </button>
+            </div>
+
+            <!-- Grid of 4 Visual Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Category Breakdown -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-blue-600"></i> Incidents by Service Category
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-categories"></canvas>
+                    </div>
+                </div>
+
+                <!-- Priority Breakdown -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-600"></i> Distribution by Severity / Priority
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-priorities"></canvas>
+                    </div>
+                </div>
+
+                <!-- Weekly Incident & Resolution Trends -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i> Weekly Incident Intake vs Resolution Velocity
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-trends"></canvas>
+                    </div>
+                </div>
+
+                <!-- Building Reliability Hotspots -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i data-lucide="building-2" class="w-4 h-4 text-purple-600"></i> Campus Building Incident Ranking
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-hotspots"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: INNOVATION & TEAM ARCHITECTURE MATRIX -->
+        <div id="tab-content-modules" class="tab-content hidden space-y-6">
+            
+            <!-- Faculty Innovation Card -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">Distinct Faculty Innovation & Technical Enhancements</h3>
+                        <p class="text-xs text-slate-500">Engineered specifically to solve smart campus operational safety and SLA response times.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div class="text-sm font-bold text-blue-600 flex items-center gap-1.5">
+                            <i data-lucide="brain-circuit" class="w-4 h-4"></i> AI NLP Emergency Triage Engine
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">
+                            Real-time NLP keyword & hazard pattern analyzer that detects emergencies (fires, gas leaks, water floods, trapped lifts) and automatically escalates tickets to EMERGENCY with 1-hour SLA.
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div class="text-sm font-bold text-indigo-600 flex items-center gap-1.5">
+                            <i data-lucide="map-pin" class="w-4 h-4"></i> Interactive GIS Campus Map
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">
+                            Leaflet-powered real-time geospatial map displaying building coordinates, active problem hotspots, and severity-colored pulse markers for immediate spatial situational awareness.
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div class="text-sm font-bold text-emerald-600 flex items-center gap-1.5">
+                            <i data-lucide="zap" class="w-4 h-4"></i> Real-time WebSockets & Cloud Probes
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">
+                            Bidirectional WebSocket event bus for zero-latency status synchronization, coupled with Prometheus metrics (<code class="text-xs text-emerald-600">/api/v1/metrics</code>) and Kubernetes health probes.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Module Ownership Matrix -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-blue-600"></i> Individual Team Member Module Ownership Matrix
+                </h3>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-bold uppercase tracking-wider">
+                                <th class="py-3 px-4">Student / Member</th>
+                                <th class="py-3 px-4">Module Assigned</th>
+                                <th class="py-3 px-4">Core Deliverables & Architecture Responsibilities</th>
+                                <th class="py-3 px-4">Cloud & REST API Endpoints</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">Student 1 (Lead Backend)</td>
+                                <td class="py-3 px-4 text-blue-600 font-semibold">Backend Core & REST API Service</td>
+                                <td class="py-3 px-4 text-slate-600 dark:text-slate-300">FastAPI backend, SQLAlchemy ORM models, Pydantic data schemas, SQLite/Postgres persistence, OpenAPI spec.</td>
+                                <td class="py-3 px-4 font-mono text-[11px] text-slate-500">/api/v1/requests, /docs, /redoc</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">Student 2 (Frontend & GIS)</td>
+                                <td class="py-3 px-4 text-indigo-600 font-semibold">Request Submission & GIS Map Portal</td>
+                                <td class="py-3 px-4 text-slate-600 dark:text-slate-300">Interactive Single-Page UI, Leaflet GIS campus map, photo evidence upload, Multilingual (5 languages) & WCAG 2.1 AA.</td>
+                                <td class="py-3 px-4 font-mono text-[11px] text-slate-500">/api/v1/requests/upload-evidence, /requests/buildings</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">Student 3 (Workflow & RBAC)</td>
+                                <td class="py-3 px-4 text-purple-600 font-semibold">Incident Response & Audit Workflow Engine</td>
+                                <td class="py-3 px-4 text-slate-600 dark:text-slate-300">Lifecycle state machine (SUBMITTED -> CLOSED), technician assignment, immutable audit logging, role switching.</td>
+                                <td class="py-3 px-4 font-mono text-[11px] text-slate-500">/api/v1/staff/requests/{id}/status, /staff/technicians</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">Student 4 (AI & Cloud Ops)</td>
+                                <td class="py-3 px-4 text-emerald-600 font-semibold">AI Triage, Analytics & Cloud Packaging</td>
+                                <td class="py-3 px-4 text-slate-600 dark:text-slate-300">NLP Emergency Classifier, Chart.js analytics, WebSocket broadcaster, Dockerfile, docker-compose, Kubernetes manifests.</td>
+                                <td class="py-3 px-4 font-mono text-[11px] text-slate-500">/api/v1/triage/analyze, /api/v1/metrics, /ws/events</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Developer & Cloud API Quick Links -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                <h4 class="font-bold text-sm text-slate-900 dark:text-white">Developer & Cloud Verification Links</h4>
+                <div class="flex flex-wrap gap-3 text-xs">
+                    <a href="/docs" target="_blank" class="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition">
+                        📖 Interactive OpenAPI Swagger (/docs) &rarr;
+                    </a>
+                    <a href="/redoc" target="_blank" class="px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition">
+                        📘 ReDoc API Specification (/redoc) &rarr;
+                    </a>
+                    <a href="/api/v1/health" target="_blank" class="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition">
+                        🩺 Cloud Liveness Health Probe (/api/v1/health) &rarr;
+                    </a>
+                    <a href="/api/v1/metrics" target="_blank" class="px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition">
+                        📊 Prometheus Telemetry Metrics (/api/v1/metrics) &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- CREATE SERVICE REQUEST MODAL -->
+    <div id="create-request-modal" class="fixed inset-0 z-50 modal-overlay bg-slate-900/60 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 animate-slide-in">
+            
+            <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur z-10">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-base text-slate-900 dark:text-white" data-i18n="modalTitle">Report New Campus Incident</h3>
+                </div>
+                <button onclick="closeNewRequestModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">&times;</button>
+            </div>
+
+            <form id="create-request-form" class="p-6 space-y-4">
+                
+                <!-- Title Field -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldTitle">Incident Title *</label>
+                    <input type="text" id="req-title" required minlength="3" placeholder="e.g., Water pipe burst causing flooding in 2nd floor lab" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500">
+                </div>
+
+                <!-- Category & Priority Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldCategory">Service Category *</label>
+                        <select id="req-category" required class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500">
+                            <option value="">-- Select Category --</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="HVAC & Climate">HVAC & Climate</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="IT & Network">IT & Network</option>
+                            <option value="Safety & Security">Safety & Security</option>
+                            <option value="Sanitation & Cleaning">Sanitation & Cleaning</option>
+                            <option value="Lab Equipment">Lab Equipment</option>
+                            <option value="Infrastructure & Civil">Infrastructure & Civil</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldPriority">Priority Level *</label>
+                        <select id="req-priority" required class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500">
+                            <option value="LOW">LOW (Routine - 48h SLA)</option>
+                            <option value="MEDIUM" selected>MEDIUM (Standard - 24h SLA)</option>
+                            <option value="HIGH">HIGH (Urgent - 8h SLA)</option>
+                            <option value="CRITICAL">CRITICAL (High Hazard - 2h SLA)</option>
+                            <option value="EMERGENCY">EMERGENCY (Life Safety - 1h SLA)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Campus Building & Room/Location -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldBuilding">Campus Building *</label>
+                        <select id="req-building" required class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldRoom">Floor / Room / Landmark</label>
+                        <input type="text" id="req-room" placeholder="e.g. 3rd Floor, West Wing Room 304" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Hidden GPS Coords & Display Badge -->
+                <input type="hidden" id="req-lat">
+                <input type="hidden" id="req-lng">
+                <input type="hidden" id="req-location">
+                <div id="picked-coords-badge" class="hidden text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800"></div>
+
+                <!-- Detailed Description -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldDesc">Detailed Incident Description *</label>
+                    <textarea id="req-desc" required rows="3" placeholder="Describe the incident, safety observations, or equipment symptoms in detail..." class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500"></textarea>
+                </div>
+
+                <!-- LIVE AI TRIAGE ADVISORY CARD -->
+                <div id="ai-triage-card" class="hidden p-4 rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/30 transition-all">
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-blue-600"></i> AI Live Triage Advisor
+                        </span>
+                        <span id="ai-priority-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600 text-white">Recommended</span>
+                    </div>
+                    <p id="ai-triage-rationale" class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed"></p>
+                    <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <span id="ai-triage-sla">Target SLA: 24h</span>
+                        <span id="ai-triage-team">Auto-Routed To: General Facilities</span>
+                    </div>
+                </div>
+
+                <!-- Photo Evidence Upload Field -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="fieldEvidence">Attach Photo Evidence (Optional)</label>
+                    <input type="file" id="req-evidence-file" accept="image/*,.pdf" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <input type="hidden" id="req-evidence-url">
+                    <div id="evidence-preview-container" class="mt-2 hidden">
+                        <img id="evidence-preview-img" class="h-24 rounded-lg object-cover border border-slate-200" alt="Preview">
+                    </div>
+                </div>
+
+                <!-- Hidden Reporter Info -->
+                <input type="hidden" id="req-reporter-name">
+                <input type="hidden" id="req-reporter-email">
+
+                <!-- Submit / Cancel Action Buttons -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+                    <button type="button" onclick="closeNewRequestModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" data-i18n="cancelBtn">
+                        Cancel
+                    </button>
+                    <button type="submit" id="req-submit-btn" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20" data-i18n="submitBtn">
+                        Submit Service Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- REQUEST DETAILS & WORKFLOW MODAL -->
+    <div id="request-details-modal" class="fixed inset-0 z-50 modal-overlay bg-slate-900/60 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 animate-slide-in">
+            
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur z-10">
+                <div class="flex items-center gap-2">
+                    <span id="detail-ticket-code" class="font-mono text-sm font-black px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">CP-2026-001</span>
+                    <span id="detail-priority" class="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-800">CRITICAL</span>
+                    <span id="detail-status" class="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800">SUBMITTED</span>
+                </div>
+                <button onclick="closeRequestDetails()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                
+                <!-- Title & Description -->
+                <div>
+                    <h3 id="detail-title" class="text-lg font-bold text-slate-900 dark:text-white"></h3>
+                    <p id="detail-desc" class="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed"></p>
+                </div>
+
+                <!-- Metadata Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Category</div>
+                        <div id="detail-category" class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Campus Building</div>
+                        <div id="detail-building" class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Specific Location</div>
+                        <div id="detail-location" class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Target SLA</div>
+                        <div id="detail-sla" class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <!-- Reporter & Assigned Staff -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Reported By</div>
+                        <div id="detail-reporter" class="font-medium text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="text-slate-400 uppercase font-bold text-[10px]">Assigned Technician / Team</div>
+                        <div id="detail-assigned" class="font-medium text-slate-800 dark:text-slate-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <!-- AI Triage Box -->
+                <div id="detail-ai-box"></div>
+
+                <!-- Attached Evidence -->
+                <div id="detail-evidence-container"></div>
+
+                <!-- STAFF WORKFLOW CONTROLS (Only visible for Staff/Admin) -->
+                <div id="detail-staff-controls" class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 space-y-3">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="shield" class="w-4 h-4 text-blue-600"></i> Authorized Staff Workflow Actions
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Status Transition -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-semibold">Update Status</label>
+                            <div class="flex gap-1.5">
+                                <select id="detail-status-select" class="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-700">
+                                    <option value="SUBMITTED">SUBMITTED</option>
+                                    <option value="TRIAGED">TRIAGED</option>
+                                    <option value="ASSIGNED">ASSIGNED</option>
+                                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                                    <option value="RESOLVED">RESOLVED</option>
+                                    <option value="CLOSED">CLOSED</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                </select>
+                                <button onclick="saveStatusChangeFromModal()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold">
+                                    Apply
+                                </button>
+                            </div>
+                            <input type="text" id="detail-resolution-notes" placeholder="Optional resolution notes..." class="w-full px-2.5 py-1 text-xs bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-700">
+                        </div>
+
+                        <!-- Technician Assignment -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-semibold">Assign Technician</label>
+                            <div class="flex gap-1.5">
+                                <select id="detail-assign-select" class="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-700">
+                                    <!-- Populated dynamically -->
+                                </select>
+                                <button onclick="saveAssignmentFromModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold">
+                                    Assign
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Immutable Audit Trail Timeline -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                        <i data-lucide="history" class="w-4 h-4"></i> Immutable Incident Lifecycle & Audit Trail
+                    </h4>
+                    <div id="detail-audit-timeline" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK STATUS MODAL -->
+    <div id="quick-status-modal" class="fixed inset-0 z-50 modal-overlay bg-slate-900/60 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-800 animate-slide-in space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white">Update Incident Status</h3>
+                <button onclick="closeQuickStatusModal()" class="text-slate-400 text-lg font-bold">&times;</button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1">Select New Status</label>
+                <select id="quick-status-select" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700">
+                    <option value="TRIAGED">TRIAGED</option>
+                    <option value="ASSIGNED">ASSIGNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="CLOSED">CLOSED</option>
+                    <option value="REJECTED">REJECTED</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1">Resolution Notes (Optional)</label>
+                <input type="text" id="quick-status-notes" placeholder="e.g. Capacitor replaced, tested operational." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm border border-slate-200 dark:border-slate-700">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeQuickStatusModal()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                <button onclick="submitQuickStatus()" class="px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Save Status</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Modules -->
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/ws.js"></script>
+    <script src="/static/js/triage.js"></script>
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

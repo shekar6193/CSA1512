@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: campuspulse-config
+  labels:
+    app: campuspulse
+data:
+  PORT: "8000"
+  HOST: "0.0.0.0"
+  DATABASE_URL: "sqlite:////app/data/campus_pulse.db"
+  UPLOAD_DIR: "/app/uploads"
